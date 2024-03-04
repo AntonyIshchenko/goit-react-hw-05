@@ -1,0 +1,13 @@
+.container {
+  border-bottom: 1px solid blueviolet;
+}
+
+.list {
+  display: flex;
+  gap: 16px;
+  list-style: none;
+}
+
+:global(.active) {
+  color: orangered;
+}
