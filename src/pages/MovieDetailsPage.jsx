@@ -1,41 +1,86 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useRef, Suspense } from 'react';
+import { Link, Outlet, useParams, useLocation } from 'react-router-dom';
 import tmdbAPI from '../utils/tmdb-api';
-import Navigation from '../components/Navigation/Navigation';
+import GoBack from '../components/GoBack/GoBack';
+import useFetch from '../utils/useFetch';
+import Error from '../components/Error/Error';
+import Loading from '../components/Loading/Loading';
+import styles from './MovieDetailsPage.module.css';
 
-function MovieDetailsPage() {
+export default function MovieDetailsPage() {
+  const location = useLocation();
   const { movieId } = useParams();
-  const [isLoading, setIsLoading] = useState(false);
-  const [movie, setMovie] = useState({});
+  const backLink = useRef(
+    location.state?.from ?? location.state?.defLocation ?? '/'
+  );
 
-  useEffect(() => {
-    if (!movieId) return;
+  const {
+    data: movie,
+    isLoading,
+    error,
+  } = useFetch({
+    component: 'movieDetailsPage',
+    param: movieId,
+    data: {},
+  });
 
-    async function fetchTrendingMovie() {
-      try {
-        setIsLoading(true);
-        const data = await tmdbAPI.getMovieDetais(movieId);
-        setMovie(data);
-      } catch (err) {
-        console.log(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
+  const {
+    vote_average: voteAverage,
+    genres,
+    id,
+    poster_path: posterPath,
+    title,
+    overview,
+    release_date: releaseDate,
+  } = movie;
 
-    fetchTrendingMovie();
-  }, [movieId]);
+  const poster = posterPath && `${tmdbAPI.posterImagePath}${posterPath}`;
+  const releaseYear = releaseDate && releaseDate.slice(0, 4);
+  const userScore = Math.round(voteAverage * 10);
+  const movieGenres = genres && genres.map(genre => genre.name).join(', ');
+
   return (
-    <div>
-      <Navigation />
-      {isLoading && <p>Loading...</p>}
-      {movie.id && (
-        <h2>
-          {movie.title} ({movie.release_date.slice(0, 4)})
-        </h2>
+    <div className="page-container">
+      {isLoading && <Loading />}
+      {error && <Error message={error} />}
+      {id && (
+        <>
+          <GoBack to={backLink.current}>&larr; Go back</GoBack>
+          <div className={styles.infoContainer}>
+            <img
+              className={styles.poster}
+              src={poster}
+              alt={`${title} poster image`}
+              loading="lazy"
+              // width={250}
+            />
+            <div>
+              <h2>
+                {title} ({releaseYear})
+              </h2>
+              <p>{`User score: ${userScore}%`}</p>
+              <h3>Overview</h3>
+              <p>{overview}</p>
+              <h3>Genres</h3>
+              <p>{movieGenres}</p>
+            </div>
+          </div>
+          <hr />
+          <p>Additional information</p>
+          <ul>
+            <li>
+              <Link to="cast">Cast</Link>
+            </li>
+            <li>
+              <Link to="reviews">Reviews</Link>
+            </li>
+          </ul>
+          <hr />
+          <Suspense fallback={<div>Loading...</div>}>
+            <Outlet />
+          </Suspense>
+        </>
       )}
     </div>
   );
 }
-
-export default MovieDetailsPage;
